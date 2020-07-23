@@ -14,7 +14,7 @@ interface Props {
   style?: any;
   truncate?: boolean;
   inheritFontWeight?: boolean;
-  onClick?(): void;
+  onClick?: (e: React.MouseEvent) => void;
 }
 
 type SProps = Props & { forwardedAs: string; maxCharLen: number };

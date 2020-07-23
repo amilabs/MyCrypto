@@ -50,7 +50,7 @@ function EthAddress({
   disableTooltip = false
 }: Props) {
   return (
-    <Overrides inline={inline}>
+    <Overrides inline={inline} onClick={(e: React.MouseEvent) => e.stopPropagation()}>
       <Copyable
         text={toChecksumAddress(address)}
         isCopyable={isCopyable}
