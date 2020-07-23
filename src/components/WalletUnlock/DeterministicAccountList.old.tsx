@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import styled, { css } from 'styled-components';
 import BN from 'bn.js';
 import uniqBy from 'ramda/src/uniqBy';
 import prop from 'ramda/src/prop';
 
 import { translateRaw, Trans } from '@translations';
-import { ExtendedAsset, TAddress, Network } from '@types';
+import { ExtendedAsset, TAddress } from '@types';
 import {
   EthAddress,
   FixedSizeCollapsibleTable,
@@ -19,7 +19,6 @@ import { BREAK_POINTS, SPACING, breakpointToNumber, COLORS } from '@theme';
 import { DWAccountDisplay } from '@services';
 import { fromTokenBase } from '@services/EthService/utils';
 import { Identicon } from '@mycrypto/ui';
-import AccountsTable from './DeterministicAccountTable';
 
 const HeaderAlignment = styled.div`
   ${(props: { align?: string }) => css`
@@ -43,34 +42,6 @@ const ColumnName = styled(Typography)`
   color: ${COLORS.BLUE_DARK};
 `;
 
-const LabelContainer = styled.div`
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-`;
-
-const SIdenticon = styled(Identicon)`
-  & > img {
-    width: 30px;
-    height: 30px;
-  }
-`;
-
-const DPathContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-`;
-
-const DPathType = styled(Typography)`
-  color: ${COLORS.BLUE_DARK};
-  line-height: 18px;
-`;
-
-const DPath = styled(Typography)`
-  color: ${COLORS.GREY_ATHENS};
-  line-height: 18px;
-`;
-
 interface DeterministicAccountListProps {
   finishedAccounts: DWAccountDisplay[];
   asset: ExtendedAsset;
@@ -78,7 +49,6 @@ interface DeterministicAccountListProps {
   className?: string;
   currentsOnly?: boolean;
   dashboard?: boolean;
-  network: Network;
   onUnlock(param: any): void;
 }
 
@@ -88,76 +58,12 @@ interface ISelectedAccount {
 }
 
 export default function DeterministicAccountList(props: DeterministicAccountListProps) {
-  const { finishedAccounts, asset, isComplete, onUnlock, network } = props;
+  const { finishedAccounts, asset, isComplete, onUnlock } = props;
   const [selectedAccounts, setSelectedAccounts] = useState([] as ISelectedAccount[]);
-
+  const [selectedIndexes, setSelectedIndexes] = useState([] as number[]);
   const accountsToUse = uniqBy(prop('address'), finishedAccounts).filter(
     ({ isFreshAddress, balance }) => (balance && !balance.isZero()) || isFreshAddress
   );
-
-  const columns = useMemo(
-    () => [
-      {
-        Header: translateRaw('DETERMINISTIC_ACCOUNT_LIST_LABEL'),
-        accessor: 'label'
-      },
-      {
-        Header: translateRaw('DETERMINISTIC_ACCOUNT_LIST_ADDRESS'),
-        accessor: 'address'
-      },
-      {
-        Header: translateRaw('DETERMINISTIC_ACCOUNT_LIST_DPATH'),
-        accessor: 'dpath'
-      },
-      {
-        Header: translateRaw('DETERMINISTIC_ACCOUNT_LIST_VALUE'),
-        accessor: 'value'
-      },
-      {
-        Header: '',
-        accessor: 'ticker'
-      },
-      {
-        Header: '',
-        accessor: 'link'
-      }
-    ],
-    []
-  );
-
-  const data = useMemo(
-    () =>
-      accountsToUse.map((account) => {
-        return {
-          label: (
-            <LabelContainer>
-              <SIdenticon address={account.address} />
-              <span>I am a label</span>
-            </LabelContainer>
-          ),
-          address: <EthAddress address={account.address} truncate={truncate} />,
-          dpath: (
-            <DPathContainer>
-              <DPathType>{account.pathItem.baseDPath.label.replace(/\(.*?\)/, '')}</DPathType>
-              <DPath>({account.pathItem.path})</DPath>
-            </DPathContainer>
-          ),
-          value: `${
-            account.balance
-              ? parseFloat(
-                  fromTokenBase(new BN(account.balance.toString()), asset.decimal).toString()
-                ).toFixed(4)
-              : '0.0000'
-          }`,
-          ticker: asset.ticker,
-          link: network.blockExplorer
-            ? network.blockExplorer.addressUrl(account.address)
-            : `https://ethplorer.io/address/${account.address}`
-        };
-      }),
-    [accountsToUse]
-  );
-
   const handleSubmit = () => {
     onUnlock(selectedAccounts);
   };
@@ -173,9 +79,63 @@ export default function DeterministicAccountList(props: DeterministicAccountList
     setSelectedAccounts(selected);
   }, [accountsToUse.length]);
 
+  const toggleAccountSelection = (accountAddress: TAddress, accountPath: string) => {
+    const newSelectedAccount: ISelectedAccount = {
+      address: accountAddress,
+      derivationPath: accountPath
+    };
+    const isPresent = selectedAccounts.find(({ address }) =>
+      isSameAddress(newSelectedAccount.address, address)
+    );
+    setSelectedAccounts(
+      isPresent
+        ? selectedAccounts.filter(({ address }) =>
+            isSameAddress(newSelectedAccount.address, address)
+          )
+        : [...selectedAccounts, newSelectedAccount]
+    );
+  };
+
+  const alreadyExistsInArray = (indexes: number[], rowIndex: number) => indexes.includes(rowIndex);
+
+  const selectRow = (rowIndex: number) => {
+    setSelectedIndexes(
+      alreadyExistsInArray(selectedIndexes, rowIndex)
+        ? selectedIndexes.filter((value) => value !== rowIndex)
+        : [...selectedIndexes, rowIndex]
+    );
+  };
+
   return (
     <DeterministicAccountListWrapper>
-      <AccountsTable columns={columns} data={data} />
+      <>
+        {`Scanned Total: ${finishedAccounts.length}`}
+        <br />
+        {`isComplete: ${isComplete}`}
+        <br />
+        {!isComplete && (
+          <>
+            <Spinner /> Scanning...
+          </>
+        )}
+      </>
+      <br />
+      <FixedSizeCollapsibleTable
+        breakpoint={breakpointToNumber(BREAK_POINTS.SCREEN_XS)}
+        maxHeight={'750px'}
+        {...buildDeterministicAccountTable(
+          accountsToUse,
+          selectedAccounts,
+          asset,
+          selectedIndexes,
+          selectRow,
+          toggleAccountSelection
+        )}
+      />
+      <br />
+      <Button disabled={selectedAccounts.length === 0} onClick={handleSubmit}>
+        {`Add ${selectedAccounts.length} Accounts`}
+      </Button>
     </DeterministicAccountListWrapper>
   );
 }
