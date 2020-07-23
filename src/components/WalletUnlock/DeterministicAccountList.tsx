@@ -8,14 +8,15 @@ import { translateRaw, Trans } from '@translations';
 import { ExtendedAsset, TAddress, Network } from '@types';
 import {
   EthAddress,
-  FixedSizeCollapsibleTable,
   Spinner,
   Checkbox,
   Button,
-  Typography
+  Typography,
+  LinkOut,
+  EditableAccountLabel
 } from '@components';
 import { truncate, isSameAddress } from '@utils';
-import { BREAK_POINTS, SPACING, breakpointToNumber, COLORS } from '@theme';
+import { BREAK_POINTS, SPACING, COLORS } from '@theme';
 import { DWAccountDisplay } from '@services';
 import { fromTokenBase } from '@services/EthService/utils';
 import { Identicon } from '@mycrypto/ui';
@@ -69,6 +70,10 @@ const DPathType = styled(Typography)`
 const DPath = styled(Typography)`
   color: ${COLORS.GREY_ATHENS};
   line-height: 18px;
+`;
+
+const LinkContainer = styled.div`
+  margin-right: 40px;
 `;
 
 interface DeterministicAccountListProps {
@@ -132,7 +137,7 @@ export default function DeterministicAccountList(props: DeterministicAccountList
           label: (
             <LabelContainer>
               <SIdenticon address={account.address} />
-              <span>I am a label</span>
+              <EditableAccountLabel address={account.address} networkId={network.id} />
             </LabelContainer>
           ),
           address: <EthAddress address={account.address} truncate={truncate} />,
@@ -150,9 +155,17 @@ export default function DeterministicAccountList(props: DeterministicAccountList
               : '0.0000'
           }`,
           ticker: asset.ticker,
-          link: network.blockExplorer
-            ? network.blockExplorer.addressUrl(account.address)
-            : `https://ethplorer.io/address/${account.address}`
+          link: (
+            <LinkContainer>
+              <LinkOut
+                link={
+                  network.blockExplorer
+                    ? network.blockExplorer.addressUrl(account.address)
+                    : `https://ethplorer.io/address/${account.address}`
+                }
+              />
+            </LinkContainer>
+          )
         };
       }),
     [accountsToUse]
@@ -260,7 +273,7 @@ const buildDeterministicAccountTable = (
       />,
       <div key={index}>
         <Identicon address={address} />
-        <span>I am a label</span>
+        <EditableAccountLabel />
       </div>,
       <EthAddress key={index} address={address} truncate={truncate} />,
       <div key={index}>{pathItem.path}</div>,
