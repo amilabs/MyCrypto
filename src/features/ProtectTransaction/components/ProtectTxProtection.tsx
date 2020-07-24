@@ -292,7 +292,11 @@ export const ProtectTxProtection: FC<Props> = ({ handleProtectTxSubmit }) => {
             <p className="fee-label">{translateRaw('PROTECTED_TX_FEE')}</p>
             <Amount
               assetValue={getAssetValue()}
-              fiat={{ symbol: getFiat(settings).symbol, amount: getFiatValue() }}
+              fiat={{
+                symbol: getFiat(settings).symbol,
+                amount: getFiatValue(),
+                ticker: getFiat(settings).ticker
+              }}
             />
           </FeeContainer>
         </>
